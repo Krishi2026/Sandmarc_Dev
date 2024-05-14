@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const intro = document.querySelector('.intro');
     const shoton = document.querySelector('.shoton');
     const controller = new ScrollMagic.Controller();
+    let lastScrollPos = 0;
+    let scrollVelocity = 0;
 
     // Video control setup
     video1.play();
@@ -15,41 +17,31 @@ document.addEventListener('DOMContentLoaded', function() {
         video2.pause(); // Start paused for scroll control
     });
 
-    // Improved throttle function for smoother updates
-    const throttle = (func, limit) => {
-        let lastFunc;
-        let lastRan;
-        return function() {
-            const context = this;
-            const args = arguments;
-            if (!lastRan) {
-                func.apply(context, args);
-                lastRan = Date.now();
-            } else {
-                clearTimeout(lastFunc);
-                lastFunc = setTimeout(function() {
-                    func.apply(context, args);
-                    lastRan = Date.now();
-                }, Math.max(limit - (Date.now() - lastRan), 0));
-            }
+    const updateVideoTime = (progress) => {
+        const targetTime = progress * video2.duration;
+        if (Math.abs(video2.currentTime - targetTime) > 0.05) { // Adjust threshold for smoother playback
+            video2.currentTime = targetTime;
         }
     };
 
-    // Scroll control for video2 with throttling
-    const updateVideoTime = throttle(function(progress) {
-        const targetTime = progress * video2.duration;
-        if (Math.abs(video2.currentTime - targetTime) > 0.1) {
-            video2.currentTime = targetTime;
-        }
-    }, 50); // Throttle updates to every 50 ms for smoother updates
+    const scrollHandler = () => {
+        const currentScrollPos = controller.scrollPos();
+        const delta = currentScrollPos - lastScrollPos;
+        lastScrollPos = currentScrollPos;
+        scrollVelocity = 0.00000001 * delta + 0.001 * scrollVelocity; // Adjusted decay factor for longer deceleration
+        const progress = (currentScrollPos + scrollVelocity) / (window.innerHeight * 10); // Adjusted duration
+        updateVideoTime(progress);
+        requestAnimationFrame(scrollHandler); // Use requestAnimationFrame for smoother animation
+    };
+
+    window.addEventListener('scroll', scrollHandler);
 
     const sceneVideo2 = new ScrollMagic.Scene({
-        duration: window.innerHeight * 3, // Adjusted for longer scroll duration
+        duration: window.innerHeight * 10, // Adjusted for longer scroll duration
         triggerElement: intro,
         triggerHook: 0
     })
     .setPin(intro)
-    .on("progress", e => updateVideoTime(e.progress))
     .addTo(controller);
 
     // Scale animation for the shoton section without visual indicators
